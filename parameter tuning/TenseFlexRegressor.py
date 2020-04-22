@@ -81,7 +81,7 @@ class tune_param_classifier:
     
    
     
-    def categorical_compute(self, actual, prediction):
+    def _compute(self, actual, prediction):
         prediction = tf.argmax(logits, 1)
         actual = tf.argmax(y,1)
         
@@ -95,15 +95,6 @@ class tune_param_classifier:
         precision = TP/(TP+FP)
         F1_Score = 2*(Recall * precision) / (Recall + precision)
         return accuracy, f1_score, precision,recall
-
-    
-    
-    def binary_compute(self, actual, prediction):
-        accuracy = accuracy_score(actual, prediction)
-        f1_score = f1_score(actual, prediction)
-        precision = precision_score(actual, prediction)
-        recall = (precision *f1_score)/((2*precision)-f1_score)
-        return accuracy, f1_score, precision, recall
     
     
     
@@ -127,8 +118,9 @@ class tune_param_classifier:
         
         # losses
         losses = {
-            'binary':tf.keras.losses.binary_crossentropy(from_logits = True),
-            'categorical':tf.keras.losses.CategoricalCrossentropy(from_logits = True)
+            'mse':tf.keras.losses.MSE,
+            'mae':tf.keras.losses.MAE,
+            'mape':tf.keras.losses.MAPE,
         }
         
         
@@ -146,44 +138,24 @@ class tune_param_classifier:
             for m in optimize.keys():
                 #document training params
                 dict_doc = {}
-                if (y.shape[1] in [None, 1]):
-                    model.compile(optimizer=optimize[m],
-                                  loss= losses['binary'],
-                                  metrics=['accuracy'])
-                    model.fit(x,y, epoch = epoch, batch_size= batch_size,
-                             validation_data = validation_data, verbose = 0)
-                    pred_train, pred_test = model.predict(x), model.predict(validation_data[0])
-                    
-                    train_result = self.binary_compute(y, pred_train)
-                    test_result = self.binary_compute(validation_data[1],pred_test)
-                    
-                    # document training params
-                    dict_doc['no_of_layers'] = no_of_layers
-                    dict_doc['neuron_values'] = current_neurons
-                    dict_doc['optimizer'] = m
-                    dict_doc['loss'] = 'binary_crossentropy'
-                    dict_doc['training_values'] = train_result
-                    dict_doc['testing_values'] = test_result
-                    
-                else:
-                    model.compile(optimizer = optimize[m],
-                                  loss= losses['categorical'],
-                                  metrics=['accuracy'])
-                    h = model.fit(x,y, epoch = epoch, batch_size= batch_size,
-                             validation_data = validation_data,verbose =0)
-                    pred_train, pred_test = model.predict(x), model.predict(validation_data[0])
-                    
-                    train_result = self.categorical_compute(y, pred_train)
-                    test_result = self.categorical_compute(validation_data[1],pred_test)
-                    
-                    # document training params
-                    dict_doc['no_of_layers'] = no_of_layers
-                    dict_doc['neuron_values'] = current_neurons
-                    dict_doc['optimizer'] = m
-                    dict_doc['loss'] = 'binary_crossentropy'
-                    dict_doc['training_values'] = train_result
-                    dict_doc['testing_values'] = test_result
-               
+                model.compile(optimizer=optimize[m],
+                              loss= losses['mae'],
+                              metrics=['accuracy'])
+                model.fit(x,y, epoch = epoch, batch_size= batch_size,
+                         validation_data = validation_data, verbose = 0)
+                pred_train, pred_test = model.predict(x), model.predict(validation_data[0])
+
+                train_result = self._compute(y, pred_train)
+                test_result = self._compute(validation_data[1],pred_test)
+
+                # document training params
+                dict_doc['no_of_layers'] = no_of_layers
+                dict_doc['neuron_values'] = current_neurons
+                dict_doc['optimizer'] = m
+                dict_doc['loss'] = 'mean squared error'
+                dict_doc['training_values'] = train_result
+                dict_doc['testing_values'] = test_result
+                  
                 # take record of all iterations
                 dict_neurons[str(pos)+'_'+m] = dict_doc
                     

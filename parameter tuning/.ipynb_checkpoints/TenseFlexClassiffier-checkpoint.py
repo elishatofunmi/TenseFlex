@@ -1,4 +1,4 @@
-class TenseFlexClassifier:
+class tune_param_classifier:
     def __init__(self, x, y, epoch,learning_rate, no_of_layers, 
                  batch_size,validation_data):
         
@@ -127,8 +127,8 @@ class TenseFlexClassifier:
         
         # losses
         losses = {
-            'binary':tf.keras.losses.binary_crossentropy(0.01),
-            'categorical':tf.keras.losses.categorical_crossentropy(logit = True)
+            'binary':tf.keras.losses.binary_crossentropy(from_logits = True),
+            'categorical':tf.keras.losses.CategoricalCrossentropy(from_logits = True)
         }
         
         
@@ -155,7 +155,7 @@ class TenseFlexClassifier:
                     pred_train, pred_test = model.predict(x), model.predict(validation_data[0])
                     
                     train_result = self.binary_compute(y, pred_train)
-                    test_result = self.categorical_compute(validation_data[1],pred_test)
+                    test_result = self.binary_compute(validation_data[1],pred_test)
                     
                     # document training params
                     dict_doc['no_of_layers'] = no_of_layers
@@ -173,7 +173,7 @@ class TenseFlexClassifier:
                              validation_data = validation_data,verbose =0)
                     pred_train, pred_test = model.predict(x), model.predict(validation_data[0])
                     
-                    train_result = self.binary_compute(y, pred_train)
+                    train_result = self.categorical_compute(y, pred_train)
                     test_result = self.categorical_compute(validation_data[1],pred_test)
                     
                     # document training params
