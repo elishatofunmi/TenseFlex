@@ -18,7 +18,7 @@ class tune_param_classifier:
         
     
         #no of possiblities
-        self.possibilities = self.no_of_possibilities(len(self.layers_range))
+        self.possibilities = self.no_of_posibilities(len(self.layers_range))
         
         #call evaluate classifier to evaluate the network
                 
