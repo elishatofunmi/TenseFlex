@@ -1,5 +1,14 @@
 import tensorflow.compat.v1 as tf
 tf.disable_eager_execution()
+from tensorflow.keras import layers
+from tensorflow.keras import layers
+import numpy as np
+import time
+import pandas as pd
+from tqdm import tqdm
+import warnings
+warnings.filterwarnings("ignore")
+
 
 class tune_param_classifier:
     def __init__(self, x, y, epoch,learning_rate, no_of_layers, 
@@ -46,15 +55,30 @@ class tune_param_classifier:
     
     
     def minimum_variance(self, dict_scores):
-        variances = [np.var([np.var(m),np.var(n)]) for m,n in zip(dict_scores[i]['training_values'],
-                                                                 dict_scores[i]['testing_values']) 
-                    for i in dict_scores.keys()]
+        total_var = []
+        for i in dict_scores.keys():
+            variances = [np.var([np.var(m),np.var(n)]) for m,n in zip(dict_scores[i]['training_values'],dict_scores[i]['testing_values'])]
+            total_var.append(np.var(variances))
         result = {}
-        for key, value in zip(dict_scores.keys(),variances):  
-            if value == min(variances):
+        for key, value in zip(dict_scores.keys(),total_var):  
+            if value == min(total_var):
                 result = dict_scores[key]
                 break
-        return result
+         
+        #no of layers
+        print('no of layers: ', result['no_of_layers'])
+        print('Neuron values: ', result['neuron_values'])
+        print('Best Optimizer: ', result['optimizer'])
+        print('Best Loss: ', result['loss'])
+        #print dataframe
+        dict_training = {'training_value':result['training_values'],
+                      'testing_value':result['testing_values']}
+        indexes = ['accuracy', 'precision', 'recall','f1_score']
+        frame = pd.DataFrame(dict_training, index = indexes)
+        print(frame.head())
+        
+        
+        return 
     
     
     def no_of_posibilities(self, no_of_layers):
@@ -71,41 +95,54 @@ class tune_param_classifier:
         model.add(layers.Dense(neurons[0],input_shape=(self.x_dimension[1],), activation='relu'))
         
         # add hidden layers
-        for i in range(neurons[1:]):
+        for i in neurons[1:]:
             model.add(layers.Dense(i, activation='relu'))
-            
         # add output layers
         if self.target_dimension[1] == None:
             model.add(layers.Dense(1, activation = 'softmax'))
         else:
-            model.add(self.target_dimension[1], activation = 'softmax')
+            model.add(layers.Dense(self.target_dimension[1], activation = 'softmax'))
             
         return model
     
    
     
     def categorical_compute(self, actual, prediction):
-        prediction = tf.argmax(logits, 1)
-        actual = tf.argmax(y,1)
+        prediction = tf.argmax(prediction, 1)
+        actual = tf.argmax(actual,1)
         
-        TP = tf.math.count_nonzero(prediction * actual)
-        TN = tf.math.count_nonzero((prediction - 1) * (actual - 1))
-        FP = tf.math.count_nonzero(prediction * (actual - 1))
-        FN = tf.math.count_nonzero((prediction - 1) * actual)
+        with tf.Session() as sess:
         
-        accuracy = (TP+TN)/(TP+TN+FP+FN)
-        Recall = TP/(TP+FN)
-        precision = TP/(TP+FP)
-        F1_Score = 2*(Recall * precision) / (Recall + precision)
-        return accuracy, f1_score, precision,recall
+            TP = tf.math.count_nonzero(prediction * actual)
+            TN = tf.math.count_nonzero((prediction - 1) * (actual - 1))
+            FP = tf.math.count_nonzero(prediction * (actual - 1))
+            FN = tf.math.count_nonzero((prediction - 1) * actual)
+
+            accuracy = (TP+TN)/(TP+TN+FP+FN)
+            Recall = TP/(TP+FN)
+            precision = TP/(TP+FP)
+            f1_score = 2*(Recall * precision) / (Recall + precision)
+            recall = (precision *f1_score)/((2*precision)-f1_score)
+            
+            accuracy = accuracy.eval()
+            recall = recall.eval()
+            precision = precision.eval()
+            f1_score = f1_score.eval()
+        return accuracy, f1_score, precision, recall
 
     
     
     def binary_compute(self, actual, prediction):
-        accuracy = accuracy_score(actual, prediction)
-        f1_score = f1_score(actual, prediction)
-        precision = precision_score(actual, prediction)
-        recall = (precision *f1_score)/((2*precision)-f1_score)
+        
+        with tf.Session() as sess:
+            accuracy = accuracy_score(actual, prediction)
+            f1_score = f1_score(actual, prediction)
+            precision = precision_score(actual, prediction)
+            recall = (precision *f1_score)/((2*precision)-f1_score)
+            accuracy = accuracy.eval()
+            recall = recall.eval()
+            precision = precision.eval()
+            f1_score = f1_score.eval()
         return accuracy, f1_score, precision, recall
     
     
@@ -122,22 +159,23 @@ class tune_param_classifier:
             'rmsprop':tf.keras.optimizers.RMSprop(learning_rate),
             'gradient descent':tf.keras.optimizers.SGD(learning_rate),
             'adam':tf.keras.optimizers.Adam(learning_rate),
-            'adagrad':tf.keras.optimizers.AdaGrad(learning_rate),
-            'adadelta':tf.keras.optimizers.AdaDelta(learning_rate),
-            'nadem':tf.keras.optimizers.Nadem(learning_rate)
+            'adagrad':tf.keras.optimizers.Adagrad(learning_rate),
+            'adadelta':tf.keras.optimizers.Adadelta(learning_rate),
+            'nadem':tf.keras.optimizers.Nadam(learning_rate)
         }
         
         
         # losses
         losses = {
-            'binary':tf.keras.losses.binary_crossentropy(from_logits = True),
+            'binary':tf.keras.losses.BinaryCrossentropy(from_logits = True),
             'categorical':tf.keras.losses.CategoricalCrossentropy(from_logits = True)
         }
         
         
 
         dict_neurons = {}
-        for pos in range(self.possibilities):
+        for pos in tqdm(range(self.possibilities)):
+            time.sleep(0.1)
             #randomly initialize values as numbers of neurons
             current_neurons = np.random.choice(data, no_of_layers, replace = False)
             
@@ -172,7 +210,7 @@ class tune_param_classifier:
                     model.compile(optimizer = optimize[m],
                                   loss= losses['categorical'],
                                   metrics=['accuracy'])
-                    h = model.fit(x,y, epoch = epoch, batch_size= batch_size,
+                    h = model.fit(x,y, epochs = epoch, batch_size= batch_size,
                              validation_data = validation_data,verbose =0)
                     pred_train, pred_test = model.predict(x), model.predict(validation_data[0])
                     

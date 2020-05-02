@@ -1,3 +1,15 @@
+import tensorflow.compat.v1 as tf
+tf.disable_eager_execution()
+from tensorflow.keras import layers
+from tensorflow.keras import layers
+import numpy as np
+import time
+import pandas as pd
+from tqdm import tqdm
+import warnings
+warnings.filterwarnings("ignore")
+
+
 class tune_param_classifier:
     def __init__(self, x, y, epoch,learning_rate, no_of_layers, 
                  batch_size,validation_data):
@@ -43,15 +55,27 @@ class tune_param_classifier:
     
     
     def minimum_variance(self, dict_scores):
-        variances = [np.var([np.var(m),np.var(n)]) for m,n in zip(dict_scores[i]['training_values'],
-                                                                 dict_scores[i]['testing_values']) 
-                    for i in dict_scores.keys()]
+        total_var = []
+        for i in dict_scores.keys():
+            variances = [np.var([np.var(m),np.var(n)]) for m,n in zip(dict_scores[i]['training_values'],dict_scores[i]['testing_values'])]
+            total_var.append(np.var(variances))
         result = {}
-        for key, value in zip(dict_scores.keys(),variances):  
-            if value == min(variances):
+        for key, value in zip(dict_scores.keys(),total_var):  
+            if value == min(total_var):
                 result = dict_scores[key]
                 break
-        return result
+         
+        #no of layers
+        print('no of layers: ', result['no_of_layers'])
+        print('Best Optimizer: ', result['optimizer'])
+        print('Best Loss: ', result['loss'])
+        #print dataframe
+        dict_training = {'training_value':result['training_values'],
+                      'testing_value':result['testing_values']}
+        indexes = ['accuracy', 'precision', 'recall','f1_score']
+        frame = pd.DataFrame(dict_training, index = indexes)
+        frame.head()
+        return 
     
     
     def no_of_posibilities(self, no_of_layers):
@@ -72,29 +96,24 @@ class tune_param_classifier:
             model.add(layers.Dense(i, activation='relu'))
             
         # add output layers
-        if self.target_dimension[1] == None:
-            model.add(layers.Dense(1, activation = 'softmax'))
-        else:
-            model.add(self.target_dimension[1], activation = 'softmax')
+        model.add(layers.Dense(1, activation = None))
             
         return model
     
    
     
     def _compute(self, actual, prediction):
-        prediction = tf.argmax(logits, 1)
-        actual = tf.argmax(y,1)
-        
-        TP = tf.math.count_nonzero(prediction * actual)
-        TN = tf.math.count_nonzero((prediction - 1) * (actual - 1))
-        FP = tf.math.count_nonzero(prediction * (actual - 1))
-        FN = tf.math.count_nonzero((prediction - 1) * actual)
-        
-        accuracy = (TP+TN)/(TP+TN+FP+FN)
-        Recall = TP/(TP+FN)
-        precision = TP/(TP+FP)
-        F1_Score = 2*(Recall * precision) / (Recall + precision)
-        return accuracy, f1_score, precision,recall
+        with tf.Session() as sess:
+            accuracy = accuracy_score(actual., prediction)
+            f1_score = f1_score(actual, prediction)
+            precision = precision_score(actual, prediction)
+            recall = (precision *f1_score)/((2*precision)-f1_score)
+            accuracy = accuracy.eval()
+            recall = recall.eval()
+            precision = precision.eval()
+            f1_score = f1_score.eval()
+        return accuracy, f1_score, precision, recall
+    
     
     
     
