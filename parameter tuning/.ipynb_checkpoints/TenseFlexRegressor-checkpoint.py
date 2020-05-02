@@ -2,6 +2,7 @@ import tensorflow.compat.v1 as tf
 tf.disable_eager_execution()
 from tensorflow.keras import layers
 from tensorflow.keras import layers
+from sklearn.metrics import accuracy_score, precision_score, f1_score
 import numpy as np
 import time
 import pandas as pd
@@ -26,18 +27,23 @@ class tune_param_classifier:
         self.target_dimension = y.shape
         
         #self layers range (start, stop, step)
-        self.layers_range = (100,1000,50)
+        self.layers_range = None
         
     
-        #no of possiblities
-        self.possibilities = self.no_of_posibilities(len(self.layers_range))
-        
+        self.possibilities = 0
         #call evaluate classifier to evaluate the network
+
+        """
+        call self.evaluate_classifier() to evaluate the network
+        """  
                 
         return
     
     
     def evaluate_classifier(self):
+        #no of possiblities
+        self.possibilities = self.no_of_posibilities(len(self.layers_range))
+        
         # evaluate network
         a = self.x
         b = self.y
@@ -67,6 +73,7 @@ class tune_param_classifier:
          
         #no of layers
         print('no of layers: ', result['no_of_layers'])
+        print('Neuron values: ', result['neuron_values'])
         print('Best Optimizer: ', result['optimizer'])
         print('Best Loss: ', result['loss'])
         #print dataframe
@@ -74,7 +81,7 @@ class tune_param_classifier:
                       'testing_value':result['testing_values']}
         indexes = ['accuracy', 'precision', 'recall','f1_score']
         frame = pd.DataFrame(dict_training, index = indexes)
-        frame.head()
+        print(frame.head())
         return 
     
     
@@ -96,29 +103,42 @@ class tune_param_classifier:
             model.add(layers.Dense(i, activation='relu'))
             
         # add output layers
-        if self.target_dimension[1] == None:
-            model.add(layers.Dense(1, activation = 'softmax'))
-        else:
-            model.add(layers.Dense(self.target_dimension[1], activation = 'softmax'))
+        model.add(layers.Dense(1, activation = None))
             
         return model
     
+    """
+    Issue here
+    Issue here
+    Issue here
+    Issue here
+    Issue here
+    Issue here
+    Issue here
+    Issue here
+    Issue here
+    Issue here
+    Issue here
+    Issue here
+    Issue here
+    Issue here
+    Issue here with _compute
+
+    """
    
     
     def _compute(self, actual, prediction):
-        prediction = tf.argmax(prediction, 1)
-        actual = tf.argmax(actual,1)
-        
-        TP = tf.math.count_nonzero(prediction * actual)
-        TN = tf.math.count_nonzero((prediction - 1) * (actual - 1))
-        FP = tf.math.count_nonzero(prediction * (actual - 1))
-        FN = tf.math.count_nonzero((prediction - 1) * actual)
-        
-        accuracy = (TP+TN)/(TP+TN+FP+FN)
-        Recall = TP/(TP+FN)
-        precision = TP/(TP+FP)
-        F1_Score = 2*(Recall * precision) / (Recall + precision)
-        return accuracy, f1_score, precision,recall
+        with tf.Session() as sess:
+            accuracy = accuracy_score(actual., prediction)
+            f1_score = f1_score(actual, prediction)
+            precision = precision_score(actual, prediction)
+            recall = (precision *f1_score)/((2*precision)-f1_score)
+            accuracy = accuracy.eval()
+            recall = recall.eval()
+            precision = precision.eval()
+            f1_score = f1_score.eval()
+        return accuracy, f1_score, precision, recall
+    
     
     
     
@@ -134,9 +154,9 @@ class tune_param_classifier:
             'rmsprop':tf.keras.optimizers.RMSprop(learning_rate),
             'gradient descent':tf.keras.optimizers.SGD(learning_rate),
             'adam':tf.keras.optimizers.Adam(learning_rate),
-            'adagrad':tf.keras.optimizers.AdaGrad(learning_rate),
-            'adadelta':tf.keras.optimizers.AdaDelta(learning_rate),
-            'nadem':tf.keras.optimizers.Nadem(learning_rate)
+            'adagrad':tf.keras.optimizers.Adagrad(learning_rate),
+            'adadelta':tf.keras.optimizers.Adadelta(learning_rate),
+            'nadem':tf.keras.optimizers.Nadam(learning_rate)
         }
         
         
@@ -150,7 +170,8 @@ class tune_param_classifier:
         
 
         dict_neurons = {}
-        for pos in range(self.possibilities):
+        for pos in tqdm(range(self.possibilities)):
+            time.sleep(0.1)
             #randomly initialize values as numbers of neurons
             current_neurons = np.random.choice(data, no_of_layers, replace = False)
             
@@ -165,7 +186,7 @@ class tune_param_classifier:
                 model.compile(optimizer=optimize[m],
                               loss= losses['mae'],
                               metrics=['accuracy'])
-                model.fit(x,y, epoch = epoch, batch_size= batch_size,
+                model.fit(x,y, epochs = epoch, batch_size= batch_size,
                          validation_data = validation_data, verbose = 0)
                 pred_train, pred_test = model.predict(x), model.predict(validation_data[0])
 

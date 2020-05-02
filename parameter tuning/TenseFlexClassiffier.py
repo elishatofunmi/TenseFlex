@@ -5,6 +5,7 @@ from tensorflow.keras import layers
 import numpy as np
 import time
 import pandas as pd
+from sklearn.metrics import accuracy_score, precision_score, f1_score
 from tqdm import tqdm
 import warnings
 warnings.filterwarnings("ignore")
@@ -26,18 +27,23 @@ class tune_param_classifier:
         self.target_dimension = y.shape
         
         #self layers range (start, stop, step)
-        self.layers_range = (100,1000,50)
+        self.layers_range = None
         
     
-        #no of possiblities
-        self.possibilities = self.no_of_posibilities(len(self.layers_range))
-        
+        self.possibilities = 0
         #call evaluate classifier to evaluate the network
-                
+
+        """
+        call self.evaluate_classifier() to evaluate the network
+        """        
         return
     
     
     def evaluate_classifier(self):
+        #no of possiblities
+        self.possibilities = self.no_of_posibilities(len(self.layers_range))
+        
+        
         # evaluate network
         a = self.x
         b = self.y
@@ -152,7 +158,8 @@ class tune_param_classifier:
                          learning_rate,batch_size, 
                          validation_data):
         # ranges of neuron values
-        data = [i for i in self.layers_range]
+        ba, ma, sa = self.layers_range
+        data = [i for i in range(ba, ma, sa)]
         
         #optimizers
         optimize = {
