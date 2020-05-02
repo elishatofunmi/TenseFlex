@@ -1,3 +1,6 @@
+import tensorflow.compat.v1 as tf
+tf.disable_eager_execution()
+
 class tune_param_classifier:
     def __init__(self, x, y, epoch,learning_rate, no_of_layers, 
                  batch_size,validation_data):
@@ -112,7 +115,7 @@ class tune_param_classifier:
                          learning_rate,batch_size, 
                          validation_data):
         # ranges of neuron values
-        data = [i for i in range(self.layers_range)]
+        data = [i for i in self.layers_range]
         
         #optimizers
         optimize = {
