@@ -101,8 +101,11 @@ class tune_param_classifier:
         model.add(layers.Dense(neurons[0],input_shape=(self.x_dimension[1],), activation='relu'))
         
         # add hidden layers
-        for i in neurons[1:]:
-            model.add(layers.Dense(i, activation='relu'))
+        if len(neurons[1:]) == 1:
+            model.add(layers.Dense(neurons[1:], activation= 'relu'))
+        else:
+            for i in range(neurons[1:]):
+                model.add(layers.Dense(i, activation='relu'))
         # add output layers
         if self.target_dimension[1] == None:
             model.add(layers.Dense(1, activation = 'softmax'))

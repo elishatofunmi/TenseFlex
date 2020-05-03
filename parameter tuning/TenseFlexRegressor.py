@@ -11,7 +11,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-class tune_param_classifier:
+class tune_param_regressor:
     def __init__(self, x, y, epoch,learning_rate, no_of_layers, 
                  batch_size,validation_data):
         
@@ -40,7 +40,7 @@ class tune_param_classifier:
         return
     
     
-    def evaluate_classifier(self):
+    def evaluate_regressor(self):
         #no of possiblities
         self.possibilities = self.no_of_posibilities(len(self.layers_range))
         
@@ -99,9 +99,12 @@ class tune_param_classifier:
         model.add(layers.Dense(neurons[0],input_shape=(self.x_dimension[1],), activation='relu'))
         
         # add hidden layers
-        for i in range(neurons[1:]):
-            model.add(layers.Dense(i, activation='relu'))
-            
+        if len(neurons[1:]) == 1:
+            model.add(layers.Dense(neurons[1:], activation= 'relu'))
+        else:
+            for i in range(neurons[1:]):
+                model.add(layers.Dense(i, activation='relu'))
+
         # add output layers
         model.add(layers.Dense(1, activation = None))
             
@@ -129,7 +132,7 @@ class tune_param_classifier:
     
     def _compute(self, actual, prediction):
         with tf.Session() as sess:
-            accuracy = accuracy_score(actual., prediction)
+            accuracy = accuracy_score(actual, prediction)
             f1_score = f1_score(actual, prediction)
             precision = precision_score(actual, prediction)
             recall = (precision *f1_score)/((2*precision)-f1_score)
@@ -147,7 +150,8 @@ class tune_param_classifier:
                          learning_rate,batch_size, 
                          validation_data):
         # ranges of neuron values
-        data = [i for i in range(self.layers_range)]
+        ba, ma, ka = self.layers_range
+        data = [i for i in range(ba, ma, ka)]
         
         #optimizers
         optimize = {
